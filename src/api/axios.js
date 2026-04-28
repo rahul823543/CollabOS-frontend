@@ -1,7 +1,8 @@
 import axios from 'axios';
 
 const api = axios.create({
-  baseURL: 'import.meta.env.VITE_API_URL/api',
+  // FIX: Use backticks to inject the variable, or string concatenation
+  baseURL: `${import.meta.env.VITE_API_URL}/api`,
   headers: {
     'Content-Type': 'application/json',
   },
