@@ -15,7 +15,7 @@ export const SocketProvider = ({ children }) => {
       const token = localStorage.getItem('token');
       if (!token) return;
 
-      const newSocket = io('http://localhost:5000', {
+      const newSocket = io(import.meta.env.VITE_SOCKET_URL, {
         query: { userId: user._id }
       });
 
