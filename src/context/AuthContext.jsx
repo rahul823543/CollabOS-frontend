@@ -15,10 +15,9 @@ export const AuthProvider = ({ children }) => {
       if (token) {
         try {
           const res = await api.get('/auth/me');
-          // /auth/me returns the user object directly (from req.user)
           setUser(res.data);
         } catch (error) {
-          console.error("Token invalid or expired", error);
+          console.error("Session check failed. Token may be expired:", error);
           localStorage.removeItem('token');
           setUser(null);
         }
@@ -30,19 +29,32 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   const login = async (email, password) => {
-    const res = await api.post('/auth/login', { email, password });
-    // Backend returns { _id, name, email, role, token } at top level
-    const { token, ...userData } = res.data;
-    localStorage.setItem('token', token);
-    setUser(userData);
+    try {
+      // Sending request to backend
+      const res = await api.post('/auth/login', { email, password });
+      
+      const { token, ...userData } = res.data;
+      localStorage.setItem('token', token);
+      setUser(userData);
+      
+    } catch (error) {
+      console.error("Login Request Failed! Details:", error.response || error);
+      throw error; // Re-throw so Login.js can show the error message in the UI
+    }
   };
 
   const register = async (name, email, password) => {
-    const res = await api.post('/auth/register', { name, email, password });
-    // Backend returns { _id, name, email, role, token } at top level
-    const { token, ...userData } = res.data;
-    localStorage.setItem('token', token);
-    setUser(userData);
+    try {
+      const res = await api.post('/auth/register', { name, email, password });
+      
+      const { token, ...userData } = res.data;
+      localStorage.setItem('token', token);
+      setUser(userData);
+
+    } catch (error) {
+      console.error("Registration Request Failed! Details:", error.response || error);
+      throw error; 
+    }
   };
 
   const logout = () => {
