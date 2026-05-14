@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import api from '../api/axios';
 import { useAuth } from './AuthContext';
 
@@ -11,87 +11,68 @@ export const TeamProvider = ({ children }) => {
   const [teams, setTeams] = useState([]);
   const [activeTeamId, setActiveTeamId] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [teamStats, setTeamStats] = useState({
-    membersCount: 0,
-    activeCount: 0,
-    totalTasks: 0,
-    progress: 0,
-  });
 
-  const fetchTeams = async () => {
+  const fetchTeams = useCallback(async () => {
     if (!user) {
       setTeams([]);
       setActiveTeamId(null);
       setLoading(false);
       return;
     }
-    
+
     try {
       setLoading(true);
       const res = await api.get('/team/my-teams');
-      setTeams(res.data);
-      
-      // Auto-select first team if no active team is selected, or if active team is no longer in the list
-      if (res.data.length > 0) {
-        if (!activeTeamId || !res.data.find(t => t._id === activeTeamId)) {
-          setActiveTeamId(res.data[0]._id);
-        }
+
+      // Safely extract array from response regardless of shape
+      const teamsArray = Array.isArray(res.data)
+        ? res.data
+        : Array.isArray(res.data?.teams)
+        ? res.data.teams
+        : [];
+
+      setTeams(teamsArray);
+
+      // Auto-select first team if no active team is selected,
+      // or if active team is no longer in the list
+      if (teamsArray.length > 0) {
+        setActiveTeamId(prev => {
+          if (!prev || !teamsArray.find(t => t._id === prev)) {
+            return teamsArray[0]._id;
+          }
+          return prev;
+        });
       } else {
         setActiveTeamId(null);
       }
     } catch (err) {
-      console.error("Failed to load teams", err);
+      console.error('Failed to load teams', err);
+      setTeams([]);
     } finally {
       setLoading(false);
     }
-  };
-
-  useEffect(() => {
-    fetchTeams();
   }, [user]);
 
   useEffect(() => {
-    const fetchActivity = async () => {
-      if (!activeTeamId) {
-        setTeamStats({ membersCount: 0, activeCount: 0, totalTasks: 0, progress: 0 });
-        return;
-      }
-      try {
-        const res = await api.get(`/teams/activity/${activeTeamId}`);
-        if (res.data) {
-          const mCount = Array.isArray(res.data.members) ? res.data.members.length : 0;
-          const aCount = Array.isArray(res.data.members) ? res.data.members.filter(m => m.isOnline).length : 0;
-          setTeamStats({
-            membersCount: mCount,
-            activeCount: aCount,
-            totalTasks: res.data.totalTasks || 0,
-            progress: parseInt(res.data.overallProgress) || 0,
-          });
-        }
-      } catch (err) {
-        console.error("Failed to load activity stats for context", err);
-      }
-    };
-    
-    fetchActivity();
-    
-    // Poll every 10 seconds to keep stats updated dynamically across all views
-    const interval = setInterval(fetchActivity, 10000);
-    return () => clearInterval(interval);
-  }, [activeTeamId]);
+    fetchTeams();
+  }, [fetchTeams]);
 
-  const activeTeam = teams.find(t => t._id === activeTeamId) || null;
+  // Guard against teams ever being a non-array before calling .find()
+  const activeTeam = Array.isArray(teams)
+    ? teams.find(t => t._id === activeTeamId) || null
+    : null;
 
   return (
-    <TeamContext.Provider value={{ 
-      teams, 
-      activeTeamId, 
-      activeTeam, 
-      setActiveTeamId, 
-      loading,
-      teamStats,
-      refreshTeams: fetchTeams 
-    }}>
+    <TeamContext.Provider
+      value={{
+        teams,
+        activeTeamId,
+        activeTeam,
+        setActiveTeamId,
+        loading,
+        refreshTeams: fetchTeams,
+      }}
+    >
       {children}
     </TeamContext.Provider>
   );

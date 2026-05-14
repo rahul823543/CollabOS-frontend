@@ -3,22 +3,28 @@ import { useAuth } from '../context/AuthContext';
 import { useNavigate, Link } from 'react-router-dom';
 import { GoogleLogin } from '@react-oauth/google';
 
-export default function Login() {
+export default function Signup() {
+  const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const { login, googleLogin } = useAuth();
+  const { register, googleLogin } = useAuth();
   const navigate = useNavigate();
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
   const validate = () => {
+    if (!name.trim() || name.trim().length < 2) {
+      setError('Name must be at least 2 characters.');
+      return false;
+    }
+
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       setError('Please enter a valid email address.');
       return false;
     }
 
-    if (password.length < 1) {
-      setError('Password is required.');
+    if (password.length < 6) {
+      setError('Password must be at least 6 characters.');
       return false;
     }
 
@@ -34,12 +40,12 @@ export default function Login() {
     setLoading(true);
 
     try {
-      await login(email, password);
+      await register(name, email, password);
       navigate('/dashboard');
     } catch (err) {
       setError(
         err.response?.data?.message ||
-          'Invalid credentials or server error.'
+          'Registration failed. Email may already be in use.'
       );
     } finally {
       setLoading(false);
@@ -107,7 +113,7 @@ export default function Login() {
           fontWeight: 500,
         }}
       >
-        SYSTEM ACCESS
+        CREATE ACCOUNT
       </h1>
 
       <p
@@ -118,7 +124,7 @@ export default function Login() {
           lineHeight: 1.5,
         }}
       >
-        Authenticate to access corporate network
+        Register a new operator for the network
       </p>
 
       <form
@@ -145,6 +151,15 @@ export default function Login() {
         )}
 
         <input
+          type="text"
+          placeholder="Full Name"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          required
+          style={inputStyle}
+        />
+
+        <input
           type="email"
           placeholder="Corporate Email"
           value={email}
@@ -155,7 +170,7 @@ export default function Login() {
 
         <input
           type="password"
-          placeholder="Password"
+          placeholder="Password (min 6 characters)"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           required
@@ -182,7 +197,7 @@ export default function Login() {
             boxShadow: '0 0 20px rgba(47, 185, 212, 0.2)',
           }}
         >
-          {loading ? 'PROCESSING...' : 'AUTHORIZE'}
+          {loading ? 'PROCESSING...' : 'REGISTER'}
         </button>
       </form>
 
@@ -198,7 +213,7 @@ export default function Login() {
           onError={handleGoogleError}
           theme="filled_black"
           size="large"
-          text="signin_with"
+          text="signup_with"
           shape="pill"
         />
       </div>
@@ -213,7 +228,7 @@ export default function Login() {
       />
 
       <Link
-        to="/signup"
+        to="/login"
         style={{
           display: 'block',
           color: 'rgba(255,255,255,0.35)',
@@ -232,7 +247,7 @@ export default function Login() {
           (e.target.style.color = 'rgba(255,255,255,0.35)')
         }
       >
-        NEW OPERATOR? CREATE ACCOUNT →
+        ← BACK TO LOGIN
       </Link>
     </div>
   );
